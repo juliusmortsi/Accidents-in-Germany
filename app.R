@@ -105,7 +105,7 @@ ui <- fluidPage(
       }
 
       .car-left { left: -30px; animation: drive-right 4s infinite linear; }
-      .car-right { right: -30px; animation: drive-left 4s infinite linear; }
+      .car-person { right: -30px; animation: drive-left-person 4s infinite linear; }
 
       .explosion {
         position: absolute;
@@ -125,7 +125,7 @@ ui <- fluidPage(
         100% { left: 45%; opacity: 0; }
       }
 
-      @keyframes drive-left {
+      @keyframes drive-left-person {
         0% { right: -40px; opacity: 1; }
         40% { right: 45%; opacity: 1; }
         45% { right: 45%; opacity: 0; }
@@ -145,9 +145,9 @@ ui <- fluidPage(
       }
 
       @keyframes tumble {
-        0% { transform: rotate(0deg) translateY(0); }
-        50% { transform: rotate(180deg) translateY(-20px); }
-        100% { transform: rotate(360deg) translateY(0); }
+        0% { transform: rotate(0deg) translate(0, 0); }
+        30% { transform: rotate(120deg) translate(40px, -40px); opacity: 1; }
+        100% { transform: rotate(720deg) translate(80px, 20px); opacity: 0; }
       }
     ")),
 
@@ -165,12 +165,12 @@ ui <- fluidPage(
 
       function performCrash() {
         var carL = document.querySelector('.car-left');
-        var carR = document.querySelector('.car-right');
+        var carP = document.querySelector('.car-person');
         var audio = document.getElementById('crash-sound');
 
         // 1. Reset classes
         if(carL) carL.classList.remove('flip-tumble');
-        if(carR) carR.classList.remove('flip-tumble');
+        if(carP) carP.classList.remove('flip-tumble');
 
         // 2. Schedule Event (Collision at 1.6s)
         setTimeout(() => {
@@ -180,9 +180,8 @@ ui <- fluidPage(
             audio.play().catch(e => {});
           }
 
-          // Randomize Flips (40% chance)
-          if (Math.random() > 0.6 && carL) carL.classList.add('flip-tumble');
-          if (Math.random() > 0.6 && carR) carR.classList.add('flip-tumble');
+          // Randomize Flung Effect (40% chance for person)
+          if (Math.random() > 0.6 && carP) carP.classList.add('flip-tumble');
 
         }, 1600);
       }
@@ -202,8 +201,8 @@ ui <- fluidPage(
       "Accidents in Germany - Histogram & Map Visualizations",
       div(
         class = "crash-container",
-        div(class = "car-left", "🚗"),
-        div(class = "car-right", "🚙"),
+        div(class = "car-left car-sprite", "🚗"),
+        div(class = "car-person car-sprite", "🚶"),
         div(class = "explosion", "💥")
       )
     )
