@@ -17,8 +17,6 @@ library(plotly) # Interactive plots
 library(DT) # Interactive data tables
 library(leaflet) # Interactive maps
 library(sf) # Spatial data handling
-library(rnaturalearth) # Country/state boundaries data
-library(rnaturalearthdata) # Additional natural earth data
 
 # --------------------------
 # LOAD DATA
@@ -29,8 +27,8 @@ state_data <- read_csv("state_long.csv")
 # Load casualties data
 casualties_data <- read_csv("casualties_long.csv")
 
-# Load Germany state boundaries for mapping
-germany_states <- ne_states(country = "germany", returnclass = "sf")
+# Load Germany state boundaries for mapping (pre-fetched for portability)
+germany_states <- readRDS("germany_states.rds")
 
 # --------------------------
 # USER INTERFACE (UI)
@@ -87,28 +85,28 @@ ui <- fluidPage(
         color: #333;
       }
 
-      /* Car Crash Animation CSS */
+      /* ============================================================ */
+      /* CRASH ANIMATION SYSTEM                                       */
+      /* ============================================================ */
       .crash-container {
         display: inline-block;
         position: relative;
-        width: 150px;
-        height: 40px;
+        width: 160px;
+        height: 60px;
         vertical-align: middle;
         margin-left: 20px;
         overflow: hidden;
       }
-      .car-left {
+
+      .car-sprite {
         position: absolute;
-        left: -30px;
         font-size: 24px;
-        animation: drive-right 4s infinite linear;
+        transition: transform 0.3s ease-out;
       }
-      .car-right {
-        position: absolute;
-        right: -30px;
-        font-size: 24px;
-        animation: drive-left 4s infinite linear;
-      }
+
+      .car-left { left: -30px; animation: drive-right 4s infinite linear; }
+      .car-right { right: -30px; animation: drive-left 4s infinite linear; }
+
       .explosion {
         position: absolute;
         left: 50%;
@@ -118,25 +116,82 @@ ui <- fluidPage(
         animation: explode 4s infinite linear;
         opacity: 0;
       }
+
+      /* Base Movement */
       @keyframes drive-right {
-        0% { left: -30px; opacity: 1; }
+        0% { left: -40px; opacity: 1; }
         40% { left: 45%; opacity: 1; }
         45% { left: 45%; opacity: 0; }
         100% { left: 45%; opacity: 0; }
       }
+
       @keyframes drive-left {
-        0% { right: -30px; opacity: 1; }
+        0% { right: -40px; opacity: 1; }
         40% { right: 45%; opacity: 1; }
         45% { right: 45%; opacity: 0; }
         100% { right: 45%; opacity: 0; }
       }
+
       @keyframes explode {
-        0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-        39% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-        41% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-        55% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
-        100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+        0%, 39% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+        41% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+        55% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+        100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
       }
+
+      /* Randomized Flip Effect */
+      .flip-tumble {
+        animation: tumble 0.8s ease-out forwards !important;
+      }
+
+      @keyframes tumble {
+        0% { transform: rotate(0deg) translateY(0); }
+        50% { transform: rotate(180deg) translateY(-20px); }
+        100% { transform: rotate(360deg) translateY(0); }
+      }
+    ")),
+
+    # SYSTEMATIC CRASH LOGIC
+    tags$audio(id = "crash-sound", src = "https://assets.mixkit.co/active_storage/sfx/2592/2592-preview.mp3", preload = "auto"),
+    tags$script(HTML("
+      // Interaction unlock for audio
+      $(document).one('click', function() {
+        var audio = document.getElementById('crash-sound');
+        if (audio) {
+          audio.play().then(() => { audio.pause(); audio.currentTime = 0; window.audioReady = true; })
+          .catch(e => console.log('Audio unlock check:', e));
+        }
+      });
+
+      function performCrash() {
+        var carL = document.querySelector('.car-left');
+        var carR = document.querySelector('.car-right');
+        var audio = document.getElementById('crash-sound');
+
+        // 1. Reset classes
+        if(carL) carL.classList.remove('flip-tumble');
+        if(carR) carR.classList.remove('flip-tumble');
+
+        // 2. Schedule Event (Collision at 1.6s)
+        setTimeout(() => {
+          // Play Sound
+          if (window.audioReady && audio) {
+            audio.currentTime = 0;
+            audio.play().catch(e => {});
+          }
+
+          // Randomize Flips (40% chance)
+          if (Math.random() > 0.6 && carL) carL.classList.add('flip-tumble');
+          if (Math.random() > 0.6 && carR) carR.classList.add('flip-tumble');
+
+        }, 1600);
+      }
+
+      // Initial start and loop (matches 4s CSS animation)
+      setTimeout(() => {
+        performCrash();
+        setInterval(performCrash, 4000);
+      }, 0);
     "))
   ),
 
