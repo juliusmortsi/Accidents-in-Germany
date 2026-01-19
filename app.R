@@ -24,8 +24,22 @@ library(sf) # Spatial data handling
 # Load state-level accident data
 state_data <- read_csv("state_long.csv")
 
-# Load casualties data
-casualties_data <- read_csv("casualties_long.csv")
+# Load casualties data and condense 11 age groups into 6 logical categories
+casualties_data <- read_csv("casualties_long.csv") %>%
+  mutate(age_group = case_when(
+    age_group %in% c("under 15 years", "15 to under 18 years") ~ "< 18 (Minors)",
+    age_group %in% c("18 to under 21 years", "21 to under 25 years") ~ "18-24 (Young Drivers)",
+    age_group %in% c("25 to under 35 years", "35 to under 45 years") ~ "25-44 (Middle-Aged)",
+    age_group %in% c("45 to under 55 years", "55 to under 65 years") ~ "45-64 (Mature Adults)",
+    age_group %in% c("65 to under 75 years", "75 years and over") ~ "65+ (Seniors)",
+    age_group == "age unknown" ~ "Unknown",
+    TRUE ~ age_group
+  )) %>%
+  # Ensure logical chronological order
+  mutate(age_group = factor(age_group, levels = c(
+    "< 18 (Minors)", "18-24 (Young Drivers)", "25-44 (Middle-Aged)",
+    "45-64 (Mature Adults)", "65+ (Seniors)", "Unknown"
+  )))
 
 # Load Germany state boundaries for mapping (pre-fetched for portability)
 germany_states <- readRDS("germany_states.rds")
@@ -116,6 +130,31 @@ ui <- fluidPage(
         font-size: 30px;
         animation: explode 10s infinite linear;
         opacity: 0;
+      }
+
+      /* Sidebar Red-Orange Theme */
+      .well {
+        background: linear-gradient(135deg, #FF4500 0%, #FF8C00 100%) !important;
+        border: none !important;
+        color: white !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+      }
+      .well h4 {
+        color: white !important;
+        font-weight: bold;
+        border-bottom: 1px solid rgba(255,255,255,0.3);
+        padding-bottom: 10px;
+      }
+      .well .control-label {
+        color: white !important;
+      }
+      .well hr {
+        border-top: 1px solid rgba(255,255,255,0.3);
+      }
+      .well .btn-default {
+        background: rgba(255,255,255,0.2) !important;
+        color: white !important;
+        border: 1px solid rgba(255,255,255,0.5) !important;
       }
 
       /* Base Movement */
@@ -249,12 +288,16 @@ ui <- fluidPage(
         condition = "input.dataset == 'state'",
         h4("State Accidents Filters"),
 
-        # Variable to plot in histogram
+        # Variable for visualization
         selectInput(
-          "state_var",
-          "Histogram Variable:",
-          choices = c("Cases" = "cases", "Year" = "year", "Month" = "month"),
-          selected = "cases"
+          "state_plot_var",
+          "Analysis Variable:",
+          choices = c(
+            "Type of Injury" = "type_of_injury",
+            "Location of Injury" = "location_of_injury",
+            "State" = "state"
+          ),
+          selected = "type_of_injury"
         ),
 
         # Filter by specific states
@@ -343,24 +386,15 @@ ui <- fluidPage(
           "Age Group:",
           choices = c("All" = "all"),
           multiple = TRUE
-        ),
-
-        # Number of bins for histogram
-        sliderInput(
-          "casualties_bins",
-          "Number of Bins:",
-          min = 10,
-          max = 100,
-          value = 30
         )
       ),
       hr(),
 
       # ========================================
-      # MAP SETTINGS (only for State Accidents)
+      # MAP SETTINGS (only for State Accidents AND Map Tab)
       # ========================================
       conditionalPanel(
-        condition = "input.dataset == 'state'",
+        condition = "input.dataset == 'state' && input.main_tabs == 'map_tab'",
         h4("Map Settings"),
 
         # Color scheme for choropleth map
@@ -372,15 +406,6 @@ ui <- fluidPage(
         )
       ),
       hr(),
-
-      # ========================================
-      # VISUALIZATION OPTIONS
-      # ========================================
-      # Add density curve to histogram
-      checkboxInput("show_density", "Show Density Curve", FALSE),
-
-      # Apply log scale to cases
-      checkboxInput("log_scale", "Log Scale (for Cases)", FALSE),
       hr(),
 
       # Download button for filtered data
@@ -455,7 +480,7 @@ server <- function(input, output, session) {
       choices = c("All" = "all", unique(casualties_data$outcome))
     )
     updateSelectInput(session, "age_filter",
-      choices = c("All" = "all", unique(casualties_data$age_group))
+      choices = c("All" = "all", levels(casualties_data$age_group))
     )
   })
 
@@ -523,6 +548,9 @@ server <- function(input, output, session) {
       if (!"all" %in% input$age_filter && !is.null(input$age_filter)) {
         df <- df %>% filter(age_group %in% input$age_filter)
       }
+
+      # Handle "Total" removal (filter out summary rows)
+      df <- df %>% filter(mode != "Total", area != "Total", outcome != "Total")
     }
 
     # Clean data: remove missing values and convert cases to numeric
@@ -531,6 +559,37 @@ server <- function(input, output, session) {
     df <- df %>% filter(!is.na(cases))
 
     return(df)
+  })
+
+  # ========================================
+  # INTERACTIVE CHART FILTERING
+  # ========================================
+  # Handle clicks on the Pie Chart to update sidebar filters
+  observeEvent(event_data("plotly_click", source = "pie_source"), {
+    click_data <- event_data("plotly_click", source = "pie_source")
+    req(click_data)
+
+    # Get the label (category) clicked from customdata
+    clicked_cat <- click_data$customdata
+    req(clicked_cat)
+
+    # Identify which variable is currently being plotted in the pie chart
+    group_var <- if (input$dataset == "state") input$state_plot_var else input$casualties_plot_var
+
+    # Update the corresponding filter in the sidebar
+    if (group_var == "age_group") {
+      updateSelectInput(session, "age_filter", selected = clicked_cat)
+    } else if (group_var == "mode") {
+      updateSelectInput(session, "mode_filter", selected = clicked_cat)
+    } else if (group_var == "outcome") {
+      updateSelectInput(session, "outcome_filter", selected = clicked_cat)
+    } else if (group_var == "state") {
+      updateSelectInput(session, "state_filter", selected = clicked_cat)
+    } else if (group_var == "type_of_injury") {
+      updateSelectInput(session, "injury_type", selected = clicked_cat)
+    } else if (group_var == "location_of_injury") {
+      updateSelectInput(session, "location_filter", selected = clicked_cat)
+    }
   })
 
   # ========================================
@@ -887,8 +946,17 @@ server <- function(input, output, session) {
 
     # 1. Aggregate cases by month/year and state/mode
     if (input$dataset == "state") {
+      # Identify top 6 states
+      top_states <- df %>%
+        group_by(state) %>%
+        summarise(t = sum(cases, na.rm = TRUE)) %>%
+        arrange(desc(t)) %>%
+        head(6) %>%
+        pull(state)
+
       heatmap_data <- df %>%
-        group_by(state, month) %>%
+        mutate(state_grp = if_else(state %in% top_states, state, "Others")) %>%
+        group_by(state_grp, month) %>%
         summarise(Total = sum(cases, na.rm = TRUE), .groups = "drop")
 
       # Ensure months are in order (lowercase to match state_long.csv)
@@ -903,12 +971,20 @@ server <- function(input, output, session) {
         as.data.frame()
 
       x_axis_labels <- month_levels
-      y_var <- "state"
-      plot_title <- "Monthly Accident Intensity by State"
+      y_var <- "state_grp"
+      plot_title <- "Monthly Accident Intensity: Top 6 States + Others"
     } else {
-      # Casualties lacks month column, use Year vs Mode
+      # Identify top 6 modes
+      top_modes <- df %>%
+        group_by(mode) %>%
+        summarise(t = sum(cases, na.rm = TRUE)) %>%
+        arrange(desc(t)) %>%
+        head(6) %>%
+        pull(mode)
+
       heatmap_data <- df %>%
-        group_by(mode, year) %>%
+        mutate(mode_grp = if_else(mode %in% top_modes, mode, "Others")) %>%
+        group_by(mode_grp, year) %>%
         summarise(Total = sum(cases, na.rm = TRUE), .groups = "drop")
 
       p_data <- heatmap_data %>%
@@ -916,8 +992,8 @@ server <- function(input, output, session) {
         as.data.frame()
 
       x_axis_labels <- sort(unique(heatmap_data$year))
-      y_var <- "mode"
-      plot_title <- "Yearly Casualties by Transport Mode"
+      y_var <- "mode_grp"
+      plot_title <- "Yearly Casualties: Top 6 Modes + Others"
     }
 
     # 2. Reshape for heatmap
@@ -949,22 +1025,35 @@ server <- function(input, output, session) {
     # Identify variable to group by
     group_var <- if (input$dataset == "state") input$state_plot_var else input$casualties_plot_var
 
-    # 1. Aggregate
-    pie_data <- df %>%
+    # 1. Aggregate and group into top 6 + others
+    agg_data <- df %>%
       group_by(!!sym(group_var)) %>%
       summarise(Total = sum(cases, na.rm = TRUE), .groups = "drop") %>%
       arrange(desc(Total))
 
+    if (nrow(agg_data) > 6) {
+      top_cats <- head(agg_data[[group_var]], 6)
+      pie_data <- agg_data %>%
+        mutate(grp = if_else(!!sym(group_var) %in% top_cats, as.character(!!sym(group_var)), "Others")) %>%
+        group_by(grp) %>%
+        summarise(Total = sum(Total), .groups = "drop") %>%
+        arrange(desc(Total))
+    } else {
+      pie_data <- agg_data %>% rename(grp = !!sym(group_var))
+    }
+
     # 2. Create Pie Chart
     plot_ly(
       pie_data,
-      labels = ~ get(group_var), values = ~Total, type = "pie",
+      labels = ~grp, values = ~Total, type = "pie",
+      customdata = ~grp, # Pass labels to click event
+      source = "pie_source", # For interactive filtering
       textinfo = "label+percent",
       insidetextorientation = "radial",
       marker = list(colors = RColorBrewer::brewer.pal(8, "Set3"))
     ) %>%
       layout(
-        title = paste("Proportion of Cases by", gsub("_", " ", group_var)),
+        title = paste("Proportion by", gsub("_", " ", group_var), "(Top 6 + Others)"),
         showlegend = TRUE
       )
   })
