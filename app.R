@@ -104,8 +104,9 @@ ui <- fluidPage(
         transition: transform 0.3s ease-out;
       }
 
-      .car-left { left: -30px; animation: drive-right 4s infinite linear; }
-      .car-person { right: -30px; animation: drive-left-person 4s infinite linear; }
+      .car-left { left: -40px; animation: drive-right 10s infinite linear; }
+      .car-person { right: -40px; animation: drive-left-person 10s infinite linear; }
+      .ambulance { left: -60px; opacity: 0; animation: drive-ambulance 10s infinite linear; }
 
       .explosion {
         position: absolute;
@@ -113,29 +114,37 @@ ui <- fluidPage(
         top: 50%;
         transform: translate(-50%, -50%) scale(0);
         font-size: 30px;
-        animation: explode 4s infinite linear;
+        animation: explode 10s infinite linear;
         opacity: 0;
       }
 
       /* Base Movement */
       @keyframes drive-right {
         0% { left: -40px; opacity: 1; }
-        40% { left: 45%; opacity: 1; }
-        45% { left: 45%; opacity: 0; }
+        15% { left: 45%; opacity: 1; }
+        18% { left: 45%; opacity: 0; }
         100% { left: 45%; opacity: 0; }
       }
 
       @keyframes drive-left-person {
         0% { right: -40px; opacity: 1; }
-        40% { right: 45%; opacity: 1; }
-        45% { right: 45%; opacity: 0; }
+        15% { right: 45%; opacity: 1; }
+        18% { right: 45%; opacity: 0; }
         100% { right: 45%; opacity: 0; }
       }
 
+      @keyframes drive-ambulance {
+        0%, 55% { left: -60px; opacity: 0; }
+        60% { left: -60px; opacity: 1; }
+        75% { left: 40%; opacity: 1; }
+        85% { left: 40%; opacity: 1; }
+        100% { left: 110%; opacity: 1; }
+      }
+
       @keyframes explode {
-        0%, 39% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-        41% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
-        55% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+        0%, 14% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+        15% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+        25% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
         100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
       }
 
@@ -153,44 +162,49 @@ ui <- fluidPage(
 
     # SYSTEMATIC CRASH LOGIC
     tags$audio(id = "crash-sound", src = "https://assets.mixkit.co/active_storage/sfx/2592/2592-preview.mp3", preload = "auto"),
+    tags$audio(id = "siren-sound", src = "https://assets.mixkit.co/active_storage/sfx/1650/1650-preview.mp3", preload = "auto"),
     tags$script(HTML("
-      // Interaction unlock for audio
+      // Interaction unlock for all audio elements
       $(document).one('click', function() {
-        var audio = document.getElementById('crash-sound');
-        if (audio) {
-          audio.play().then(() => { audio.pause(); audio.currentTime = 0; window.audioReady = true; })
-          .catch(e => console.log('Audio unlock check:', e));
-        }
+        ['crash-sound', 'siren-sound'].forEach(id => {
+          var audio = document.getElementById(id);
+          if (audio) {
+            audio.play().then(() => { audio.pause(); audio.currentTime = 0; window.audioReady = true; })
+            .catch(e => console.log('Audio unlock check:', e));
+          }
+        });
       });
 
-      function performCrash() {
-        var carL = document.querySelector('.car-left');
+      function performCrashSequence() {
         var carP = document.querySelector('.car-person');
-        var audio = document.getElementById('crash-sound');
+        var crashAudio = document.getElementById('crash-sound');
+        var sirenAudio = document.getElementById('siren-sound');
 
         // 1. Reset classes
-        if(carL) carL.classList.remove('flip-tumble');
         if(carP) carP.classList.remove('flip-tumble');
+        if(sirenAudio) { sirenAudio.pause(); sirenAudio.currentTime = 0; }
 
-        // 2. Schedule Event (Collision at 1.6s)
+        // 2. Collision Event (at 1.5s in 10s loop)
         setTimeout(() => {
-          // Play Sound
-          if (window.audioReady && audio) {
-            audio.currentTime = 0;
-            audio.play().catch(e => {});
+          if (window.audioReady && crashAudio) {
+            crashAudio.currentTime = 0;
+            crashAudio.play().catch(e => {});
           }
-
-          // Randomize Flung Effect (40% chance for person)
           if (Math.random() > 0.6 && carP) carP.classList.add('flip-tumble');
+        }, 1500);
 
-        }, 1600);
+        // 3. Ambulance Siren (at 6.0s in 10s loop)
+        setTimeout(() => {
+          if (window.audioReady && sirenAudio) {
+            sirenAudio.currentTime = 0;
+            sirenAudio.play().catch(e => {});
+          }
+        }, 6000);
       }
 
-      // Initial start and loop (matches 4s CSS animation)
-      setTimeout(() => {
-        performCrash();
-        setInterval(performCrash, 4000);
-      }, 0);
+      // Start and loop (10s cycle)
+      performCrashSequence();
+      setInterval(performCrashSequence, 10000);
     "))
   ),
 
@@ -201,8 +215,9 @@ ui <- fluidPage(
       "Accidents in Germany - Histogram & Map Visualizations",
       div(
         class = "crash-container",
-        div(class = "car-left car-sprite", "🚗"),
-        div(class = "car-person car-sprite", "🚶"),
+        div(class = "car-left car-sprite", "🚕"),
+        div(class = "car-person car-sprite", "🏃🏼➡️"),
+        div(class = "ambulance car-sprite", "🚑"),
         div(class = "explosion", "💥")
       )
     )
