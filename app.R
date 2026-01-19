@@ -19,6 +19,16 @@ library(leaflet) # Interactive maps
 library(sf) # Spatial data handling
 
 # --------------------------
+# GLOBAL VARIABLES (LINT FIXES)
+# --------------------------
+# Cleanly declare data frame columns to silence R CMD check/lint warnings
+utils::globalVariables(c(
+  "state", "type_of_injury", "location_of_injury", "year", "outcome",
+  "sex", "age_group", "area", "cases", "name", "total_cases",
+  "avg_cases", "month", "Total", "mode"
+))
+
+# --------------------------
 # LOAD DATA
 # --------------------------
 # Load state-level accident data
@@ -54,214 +64,138 @@ ui <- fluidPage(
   # Custom CSS for state info panel
   tags$head(
     tags$style(HTML("
+      /* === Global & Layout === */
+      html, body { height: 100vh; overflow-y: auto; padding: 0 10px !important; }
+      .container-fluid { padding: 0 !important; }
+
+      /* === Components === */
       .state-info-panel {
-        position: absolute;
-        background: white;
-        padding: 15px 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        z-index: 1000;
-        min-width: 250px;
-        font-family: Arial, sans-serif;
-        display: none;
-        pointer-events: auto; /* Ensure panel itself can be clicked */
+        position: absolute; background: white; padding: 15px 20px; border-radius: 8px; z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3); min-width: 250px; display: none; pointer-events: auto;
       }
-      .state-info-panel h3 {
-        margin: 0 0 10px 0;
-        color: #333;
-        font-size: 18px;
-        border-bottom: 2px solid #007bff;
-        padding-bottom: 5px;
-      }
-      .state-info-panel .info-row {
-        margin: 8px 0;
-        display: flex;
-        justify-content: space-between;
-      }
-      .state-info-panel .info-label {
-        font-weight: bold;
-        color: #555;
-      }
-      .state-info-panel .info-value {
-        color: #007bff;
-        font-weight: bold;
-      }
-      .state-info-panel .close-btn {
-        position: absolute;
-        top: 5px;
-        right: 10px;
-        cursor: pointer;
-        font-size: 20px;
-        color: #999;
-        font-weight: bold;
-      }
-      .state-info-panel .close-btn:hover {
-        color: #333;
+      .state-info-panel h3 { margin: 0 0 10px 0; color: #333; font-size: 18px; border-bottom: 2px solid #007bff; padding-bottom: 5px; }
+      .state-info-panel .info-row { margin: 8px 0; display: flex; justify-content: space-between; }
+      .state-info-panel .info-label { font-weight: bold; color: #555; }
+      .state-info-panel .info-value { color: #007bff; font-weight: bold; }
+      .state-info-panel .close-btn { position: absolute; top: 5px; right: 10px; cursor: pointer; font-size: 20px; color: #999; font-weight: bold; }
+      .state-info-panel .close-btn:hover { color: #333; }
+
+      /* === Themes === */
+      /* Sidebar: Red-Orange */
+      .well { background: linear-gradient(135deg, #FF4500 0%, #FF8C00 100%) !important; border: none !important; color: white !important; box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important; }
+      .well h4, .well .control-label { color: white !important; font-weight: bold; }
+      .well hr { border-top: 1px solid rgba(255,255,255,0.3); }
+      .well .btn-default { background: rgba(255,255,255,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.5) !important; }
+
+      /* Tabs: Teal Grove */
+      .nav-tabs { background: linear-gradient(to right, #134e4a 0%, #0f766e 100%) !important; border-bottom: 2px solid #2dd4bf !important; border-radius: 8px 8px 0 0; padding: 5px 5px 0 5px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+      .nav-tabs > li > a { color: rgba(255,255,255,0.8) !important; border: none !important; font-weight: bold; transition: all 0.3s ease; margin-right: 5px; border-radius: 6px 6px 0 0 !important; }
+      .nav-tabs > li > a:hover { background: rgba(255,255,255,0.1) !important; color: white !important; }
+      .nav-tabs > li.active > a, .nav-tabs > li.active > a:focus, .nav-tabs > li.active > a:hover {
+        background: #2dd4bf !important; color: #134e4a !important; border: none !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
       }
 
-      /* ============================================================ */
-      /* CRASH ANIMATION SYSTEM                                       */
-      /* ============================================================ */
-      .crash-container {
-        display: inline-block;
-        position: relative;
-        width: 160px;
-        height: 60px;
-        vertical-align: middle;
-        margin-left: 20px;
-        overflow: hidden;
-      }
+      /* Title: Centered Bold */
+      .app-title { text-align: center; width: 100%; margin: 10px 0 15px 0; }
+      .app-title h2 { font-family: 'Arial Black', sans-serif; font-weight: 900 !important; color: #000 !important; font-size: 28px; letter-spacing: -1px; text-transform: uppercase; margin: 0; }
 
-      .car-sprite {
-        position: absolute;
-        font-size: 24px;
-        transition: transform 0.3s ease-out;
+      /* KPI Cards: Bright Yellow */
+      .kpi-row { margin-bottom: 20px; padding: 0 10px; }
+      .kpi-card {
+        background: linear-gradient(135deg, #FFEA00 0%, #FFD600 100%); /* Bright Yellow */
+        border-radius: 12px; padding: 15px; text-align: center;
+        box-shadow: 0 4px 15px rgba(255, 214, 0, 0.4); border: 1px solid rgba(255,255,255,0.4);
+        transition: transform 0.3s ease; height: 110px; display: flex; flex-direction: column; justify-content: center;
+        color: #000;
       }
+      .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+      .kpi-title { color: #444; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; }
+      .kpi-value { color: #000; font-size: 24px; font-weight: 900; margin-bottom: 2px; }
+      .kpi-trend { font-size: 11px; font-weight: 700; }
+      .trend-up { color: #D32F2F; } .trend-down { color: #388E3C; } .trend-neutral { color: #555; }
 
-      .car-left { left: -60px; animation: drive-right-human 10s infinite linear; }
-      .car-taxi { right: -60px; animation: drive-left-taxi 10s infinite linear; }
-      .ambulance { right: -60px; opacity: 0; animation: drive-ambulance-left 10s infinite linear; }
-
-      .explosion {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%) scale(0);
-        font-size: 30px;
-        animation: explode 10s infinite linear;
-        opacity: 0;
-      }
-
-      /* Sidebar Red-Orange Theme */
-      .well {
-        background: linear-gradient(135deg, #FF4500 0%, #FF8C00 100%) !important;
-        border: none !important;
-        color: white !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
-      }
-      .well h4 {
-        color: white !important;
-        font-weight: bold;
-        border-bottom: 1px solid rgba(255,255,255,0.3);
-        padding-bottom: 10px;
-      }
-      .well .control-label {
-        color: white !important;
-      }
-      .well hr {
-        border-top: 1px solid rgba(255,255,255,0.3);
-      }
-      .well .btn-default {
-        background: rgba(255,255,255,0.2) !important;
-        color: white !important;
-        border: 1px solid rgba(255,255,255,0.5) !important;
-      }
-
-      /* Base Movement */
-      @keyframes drive-right-human {
-        0% { left: -60px; opacity: 1; }
-        15% { left: 45%; opacity: 1; }
-        18% { left: 45%; opacity: 0; }
-        100% { left: 45%; opacity: 0; }
-      }
-
-      @keyframes drive-left-taxi {
-        0% { right: -60px; opacity: 1; }
-        15% { right: 45%; opacity: 1; }
-        18% { right: 45%; opacity: 0; }
-        100% { right: 45%; opacity: 0; }
-      }
-
-      @keyframes drive-ambulance-left {
-        0%, 55% { right: -60px; opacity: 0; }
-        60% { right: -60px; opacity: 1; }
-        75% { right: 40%; opacity: 1; }
-        85% { right: 40%; opacity: 1; }
-        100% { right: 110%; opacity: 1; }
-      }
-
-      @keyframes explode {
-        0%, 14% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-        15% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
-        25% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
-        100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
-      }
-
-      /* Randomized Flip Effect */
-      .flip-tumble {
-        animation: tumble 0.8s ease-out forwards !important;
-      }
-
-      @keyframes tumble {
-        0% { transform: rotate(0deg) translate(0, 0); }
-        30% { transform: rotate(120deg) translate(60px, -40px); opacity: 1; }
-        100% { transform: rotate(720deg) translate(120px, 20px); opacity: 0; }
-      }
+      /* === Animations (Splash) === */
+      #splash-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #f8f9fa; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity 1s ease-out, visibility 1s; }
+      .splash-container { position: relative; width: 800px; height: 200px; overflow: hidden; }
+      .car-sprite { position: absolute; font-size: 80px; transition: transform 0.3s ease-out; }
+      .car-left { left: -100px; animation: drive-right-human 3s 1 linear forwards; }
+      .car-taxi { right: -100px; animation: drive-left-taxi 3s 1 linear forwards; }
+      .ambulance { right: -100px; opacity: 0; animation: drive-ambulance-left 3s 1 linear forwards; }
+      .explosion { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0); font-size: 100px; animation: explode 3s 1 linear forwards; opacity: 0; }
+      @keyframes drive-right-human { 0% { left: -100px; opacity: 1; } 15% { left: 45%; opacity: 1; } 18% { left: 45%; opacity: 0; } 100% { left: 45%; opacity: 0; } }
+      @keyframes drive-left-taxi { 0% { right: -100px; opacity: 1; } 15% { right: 45%; opacity: 1; } 18% { right: 45%; opacity: 0; } 100% { right: 45%; opacity: 0; } }
+      @keyframes drive-ambulance-left { 0%, 20% { right: -100px; opacity: 0; } 25% { right: -100px; opacity: 1; } 85% { right: 110%; opacity: 1; } 100% { right: 110%; opacity: 0; } }
+      @keyframes explode { 0%, 14% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 15% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; } 25% { transform: translate(-50%, -50%) scale(2.0); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(2.0); opacity: 0; } }
+      .flip-tumble { animation: tumble 1.0s ease-out forwards !important; }
+      @keyframes tumble { 0% { transform: scaleX(-1) rotate(0deg) translate(0, 0); } 30% { transform: scaleX(-1) rotate(120deg) translate(150px, -100px); opacity: 1; } 100% { transform: scaleX(-1) rotate(720deg) translate(300px, 50px); opacity: 0; } }
     ")),
 
     # SYSTEMATIC CRASH LOGIC
     tags$audio(id = "crash-sound", src = "https://assets.mixkit.co/active_storage/sfx/2592/2592-preview.mp3", preload = "auto"),
-    tags$audio(id = "siren-sound", src = "https://assets.mixkit.co/active_storage/sfx/1650/1650-preview.mp3", preload = "auto"),
     tags$script(HTML("
-      // Interaction unlock for all audio elements
+      // Audio unlock
       $(document).one('click', function() {
-        ['crash-sound', 'siren-sound'].forEach(id => {
-          var audio = document.getElementById(id);
-          if (audio) {
-            audio.play().then(() => { audio.pause(); audio.currentTime = 0; window.audioReady = true; })
-            .catch(e => console.log('Audio unlock check:', e));
-          }
-        });
+        var audio = document.getElementById('crash-sound');
+        if (audio) {
+          audio.play().then(() => { audio.pause(); audio.currentTime = 0; window.audioReady = true; })
+          .catch(e => console.log('Audio unlock check:', e));
+        }
       });
 
       function performCrashSequence() {
         var carH = document.querySelector('.car-left');
         var crashAudio = document.getElementById('crash-sound');
-        var sirenAudio = document.getElementById('siren-sound');
 
-        // 1. Reset classes
         if(carH) carH.classList.remove('flip-tumble');
-        if(sirenAudio) { sirenAudio.pause(); sirenAudio.currentTime = 0; }
 
-        // 2. Collision Event (at 1.5s in 10s loop)
+        // Collision Event (at 0.45s in 3s loop)
         setTimeout(() => {
           if (window.audioReady && crashAudio) {
             crashAudio.currentTime = 0;
             crashAudio.play().catch(e => {});
           }
           if (Math.random() > 0.6 && carH) carH.classList.add('flip-tumble');
-        }, 1500);
-
-        // 3. Ambulance Siren (at 6.0s in 10s loop)
-        setTimeout(() => {
-          if (window.audioReady && sirenAudio) {
-            sirenAudio.currentTime = 0;
-            sirenAudio.play().catch(e => {});
-            // Stop after two rings (approx 2.5s)
-            setTimeout(() => { sirenAudio.pause(); sirenAudio.currentTime = 0; }, 2500);
-          }
-        }, 6000);
+        }, 450);
       }
 
-      // Start and loop (10s cycle)
+      // Hide splash after 2.8s (just before 3s loop finishes)
+      setTimeout(() => {
+        var splash = document.getElementById('splash-overlay');
+        if(splash) {
+          splash.style.opacity = '0';
+          setTimeout(() => { splash.style.visibility = 'hidden'; }, 1000);
+        }
+      }, 2800);
+
       performCrashSequence();
-      setInterval(performCrashSequence, 10000);
     "))
   ),
 
-  # Title panel with crash animation
-  titlePanel(
-    windowTitle = "Accidents in Germany",
-    title = div(
-      "Accidents in Germany - Histogram & Map Visualizations",
-      div(
-        class = "crash-container",
-        div(class = "car-left car-sprite", "🏃🏼➡️"),
-        div(class = "car-taxi car-sprite", "🚕"),
-        div(class = "ambulance car-sprite", "🚑"),
-        div(class = "explosion", "💥")
-      )
+  # Splash Overlay
+  div(
+    id = "splash-overlay",
+    div(
+      class = "splash-container",
+      div(class = "car-left car-sprite", div(style = "transform: scaleX(-1)", "🏃🏼")),
+      div(class = "car-taxi car-sprite", "🚕"),
+      div(class = "ambulance car-sprite", "🚑"),
+      div(class = "explosion", "💥")
     )
+  ),
+
+  # Title panel (Centered and Bold)
+  div(
+    class = "app-title",
+    h2("Accidents in Germany - Dashboard")
+  ),
+
+  # KPI Summary Row
+  fluidRow(
+    class = "kpi-row",
+    column(3, uiOutput("kpi_total")),
+    column(3, uiOutput("kpi_peak")),
+    column(3, uiOutput("kpi_trend")),
+    column(3, uiOutput("kpi_hotspot"))
   ),
 
   # Main layout with sidebar and main panel
@@ -288,17 +222,6 @@ ui <- fluidPage(
         condition = "input.dataset == 'state'",
         h4("State Accidents Filters"),
 
-        # Variable for visualization
-        selectInput(
-          "state_plot_var",
-          "Analysis Variable:",
-          choices = c(
-            "Type of Injury" = "type_of_injury",
-            "Location of Injury" = "location_of_injury",
-            "State" = "state"
-          ),
-          selected = "type_of_injury"
-        ),
 
         # Filter by specific states
         selectInput(
@@ -343,19 +266,6 @@ ui <- fluidPage(
         condition = "input.dataset == 'casualties'",
         h4("Casualties Filters"),
 
-        # Variable for visualization
-        selectInput(
-          "casualties_plot_var",
-          "Analysis Variable:",
-          choices = c(
-            "Mode of Transport" = "mode",
-            "Area" = "area",
-            "Outcome" = "outcome",
-            "Sex" = "sex",
-            "Age Group" = "age_group"
-          ),
-          selected = "mode"
-        ),
 
         # Filter by mode of transport
         selectInput(
@@ -424,28 +334,28 @@ ui <- fluidPage(
         # MAP TAB - Always visible but shows message for Casualties
         # ========================================
         tabPanel(
-          "🗺️ Germany Map",
+          "Germany Map",
           value = "map_tab", # Add value for easier reference in hideTab/showTab
           br(),
-          leafletOutput("germany_map", height = "700px")
+          leafletOutput("germany_map", height = "60vh")
         ),
 
         # ========================================
         # MONTHLY TRENDS (HEATMAP)
         # ========================================
         tabPanel(
-          "🌡️ Monthly Trends",
+          "Monthly Trends",
           br(),
-          plotlyOutput("heatmap_plot", height = "600px")
+          plotlyOutput("heatmap_plot", height = "60vh")
         ),
 
         # ========================================
         # DISTRIBUTION (PIE CHART)
         # ========================================
         tabPanel(
-          "🥧 Distribution",
+          "Distribution",
           br(),
-          plotlyOutput("pie_chart_plot", height = "600px")
+          plotlyOutput("pie_chart_plot", height = "60vh")
         )
       )
     )
@@ -574,21 +484,28 @@ server <- function(input, output, session) {
     req(clicked_cat)
 
     # Identify which variable is currently being plotted in the pie chart
-    group_var <- if (input$dataset == "state") input$state_plot_var else input$casualties_plot_var
+    is_state <- input$dataset == "state"
+    group_var <- if (is_state) "type_of_injury" else "mode"
+    filter_id <- if (is_state) "injury_type" else "mode_filter"
 
-    # Update the corresponding filter in the sidebar
-    if (group_var == "age_group") {
-      updateSelectInput(session, "age_filter", selected = clicked_cat)
-    } else if (group_var == "mode") {
-      updateSelectInput(session, "mode_filter", selected = clicked_cat)
-    } else if (group_var == "outcome") {
-      updateSelectInput(session, "outcome_filter", selected = clicked_cat)
-    } else if (group_var == "state") {
-      updateSelectInput(session, "state_filter", selected = clicked_cat)
-    } else if (group_var == "type_of_injury") {
-      updateSelectInput(session, "injury_type", selected = clicked_cat)
-    } else if (group_var == "location_of_injury") {
-      updateSelectInput(session, "location_filter", selected = clicked_cat)
+    # Toggle logic: if the clicked category is already the only one selected, OR 'Others' is clicked, reset to 'all'
+    current_val <- input[[filter_id]]
+
+    # Robust string matching
+    clicked_str <- trimws(as.character(clicked_cat))
+
+    # If the user clicks 'Others', reset the filter to 'all' to show the full distribution again
+    if (clicked_str == "Others") {
+      updateSelectInput(session, filter_id, selected = "all")
+      return()
+    }
+
+    # If the filter is currently set to exactly one item and it matches the click, reset it
+    if (length(current_val) == 1 && trimws(as.character(current_val)) == clicked_str) {
+      updateSelectInput(session, filter_id, selected = "all")
+    } else {
+      # Otherwise, set the filter to just this category (drill-down)
+      updateSelectInput(session, filter_id, selected = clicked_cat)
     }
   })
 
@@ -631,8 +548,8 @@ server <- function(input, output, session) {
 
     # Build the leaflet map
     map <- leaflet(germany_data) %>%
-      # Add base map tiles
-      addProviderTiles(providers$CartoDB.Positron) %>%
+      # Add base map tiles (No labels in background to avoid duplication)
+      addProviderTiles(providers$CartoDB.PositronNoLabels) %>%
       # Set view to center on Germany
       setView(lng = 10.4515, lat = 51.1657, zoom = 6) %>%
       # Add colored polygons for each state
@@ -759,6 +676,7 @@ server <- function(input, output, session) {
 
           function resetAllStates() {
             console.log('JS: Resetting all states to normal');
+            map.setView([51.1657, 10.4515], 6); // Reset zoom to Germany
             map.eachLayer(function(layer) {
               if (layer.options && layer.options.layerId) {
                 var lid = String(layer.options.layerId).trim();
@@ -806,6 +724,9 @@ server <- function(input, output, session) {
                     });
                     layer.bringToFront();
                     if (element) element.style.pointerEvents = 'auto';
+
+                    // Zoom to state
+                    map.fitBounds(layer.getBounds(), { padding: [50, 50] });
                   } else {
                     // Other states: Faded style + DISABLE INTERACTION (stops highlights/tooltips)
                     layer.setStyle({
@@ -946,17 +867,8 @@ server <- function(input, output, session) {
 
     # 1. Aggregate cases by month/year and state/mode
     if (input$dataset == "state") {
-      # Identify top 6 states
-      top_states <- df %>%
-        group_by(state) %>%
-        summarise(t = sum(cases, na.rm = TRUE)) %>%
-        arrange(desc(t)) %>%
-        head(6) %>%
-        pull(state)
-
       heatmap_data <- df %>%
-        mutate(state_grp = if_else(state %in% top_states, state, "Others")) %>%
-        group_by(state_grp, month) %>%
+        group_by(state, month) %>%
         summarise(Total = sum(cases, na.rm = TRUE), .groups = "drop")
 
       # Ensure months are in order (lowercase to match state_long.csv)
@@ -971,20 +883,11 @@ server <- function(input, output, session) {
         as.data.frame()
 
       x_axis_labels <- month_levels
-      y_var <- "state_grp"
-      plot_title <- "Monthly Accident Intensity: Top 6 States + Others"
+      y_var <- "state"
+      plot_title <- "Monthly Accident Intensity by State"
     } else {
-      # Identify top 6 modes
-      top_modes <- df %>%
-        group_by(mode) %>%
-        summarise(t = sum(cases, na.rm = TRUE)) %>%
-        arrange(desc(t)) %>%
-        head(6) %>%
-        pull(mode)
-
       heatmap_data <- df %>%
-        mutate(mode_grp = if_else(mode %in% top_modes, mode, "Others")) %>%
-        group_by(mode_grp, year) %>%
+        group_by(mode, year) %>%
         summarise(Total = sum(cases, na.rm = TRUE), .groups = "drop")
 
       p_data <- heatmap_data %>%
@@ -992,8 +895,8 @@ server <- function(input, output, session) {
         as.data.frame()
 
       x_axis_labels <- sort(unique(heatmap_data$year))
-      y_var <- "mode_grp"
-      plot_title <- "Yearly Casualties: Top 6 Modes + Others"
+      y_var <- "mode"
+      plot_title <- "Yearly Casualties by Transport Mode"
     }
 
     # 2. Reshape for heatmap
@@ -1016,6 +919,99 @@ server <- function(input, output, session) {
   })
 
   # ========================================
+  # KPI REACTIVE LOGIC
+  # ========================================
+
+  # Card 1: Total Accidents
+  output$kpi_total <- renderUI({
+    val <- sum(filtered_data()$cases, na.rm = TRUE)
+    div(
+      class = "kpi-card",
+      div(class = "kpi-title", "Total Accidents"),
+      div(class = "kpi-value", format(val, big.mark = ",")),
+      div(class = "kpi-trend trend-neutral", "Across filtered period")
+    )
+  })
+
+  # Card 2: Peak Category
+  output$kpi_peak <- renderUI({
+    df <- filtered_data()
+    group_var <- if (input$dataset == "state") "type_of_injury" else "mode"
+
+    top_val <- df %>%
+      group_by(!!sym(group_var)) %>%
+      summarise(Total = sum(cases), .groups = "drop") %>%
+      arrange(desc(Total)) %>%
+      slice(1)
+
+    label <- if (nrow(top_val) > 0) as.character(top_val[[group_var]]) else "N/A"
+
+    div(
+      class = "kpi-card",
+      div(class = "kpi-title", paste("Peak", gsub("_", " ", group_var))),
+      div(class = "kpi-value", style = "font-size: 14px", label),
+      div(class = "kpi-trend trend-neutral", "Primary category")
+    )
+  })
+
+  # Card 3: Growth Trend (% change vs first year in range)
+  output$kpi_trend <- renderUI({
+    df <- filtered_data()
+    years <- sort(unique(df$year))
+
+    if (length(years) < 2) {
+      return(div(
+        class = "kpi-card",
+        div(class = "kpi-title", "Yearly Trend"),
+        div(class = "kpi-value", "N/A"),
+        div(class = "kpi-trend trend-neutral", "Select multiple years")
+      ))
+    }
+
+    y_start <- years[1]
+    y_end <- years[length(years)]
+
+    val_start <- sum(df$cases[df$year == y_start], na.rm = TRUE)
+    val_end <- sum(df$cases[df$year == y_end], na.rm = TRUE)
+
+    pct_change <- ((val_end - val_start) / val_start) * 100
+    is_up <- pct_change > 0
+
+    div(
+      class = "kpi-card",
+      div(class = "kpi-title", paste("Trend:", y_start, "-", y_end)),
+      div(class = "kpi-value", sprintf("%.1f%%", pct_change)),
+      div(
+        class = paste("kpi-trend", if (is_up) "trend-up" else "trend-down"),
+        if (is_up) "📈 Increase" else "📉 Decrease"
+      )
+    )
+  })
+
+  # Card 4: Hotspot (Riskiest State / Region)
+  output$kpi_hotspot <- renderUI({
+    df <- filtered_data()
+
+    # If viewing casualties, hotspot is by Area, if states, hotspot is by State
+    hot_var <- if (input$dataset == "state") "state" else "area"
+
+    top_hot <- df %>%
+      group_by(!!sym(hot_var)) %>%
+      summarise(Total = sum(cases), .groups = "drop") %>%
+      arrange(desc(Total)) %>%
+      slice(1)
+
+    label <- if (nrow(top_hot) > 0) as.character(top_hot[[hot_var]]) else "N/A"
+
+    div(
+      class = "kpi-card",
+      div(class = "kpi-title", paste("Hotspot:", hot_var)),
+      div(class = "kpi-value", style = "font-size: 16px", label),
+      div(class = "kpi-trend trend-up", "Most impacted")
+    )
+  })
+
+  # ========================================
   # DISTRIBUTION PIE CHART
   # ========================================
   output$pie_chart_plot <- renderPlotly({
@@ -1023,7 +1019,7 @@ server <- function(input, output, session) {
     df <- filtered_data()
 
     # Identify variable to group by
-    group_var <- if (input$dataset == "state") input$state_plot_var else input$casualties_plot_var
+    group_var <- if (input$dataset == "state") "type_of_injury" else "mode"
 
     # 1. Aggregate and group into top 6 + others
     agg_data <- df %>%
@@ -1049,12 +1045,14 @@ server <- function(input, output, session) {
       customdata = ~grp, # Pass labels to click event
       source = "pie_source", # For interactive filtering
       textinfo = "label+percent",
-      insidetextorientation = "radial",
+      insidetextorientation = "horizontal",
       marker = list(colors = RColorBrewer::brewer.pal(8, "Set3"))
     ) %>%
       layout(
         title = paste("Proportion by", gsub("_", " ", group_var), "(Top 6 + Others)"),
-        showlegend = TRUE
+        showlegend = TRUE,
+        margin = list(b = 50, t = 80, l = 50, r = 50),
+        automargin = TRUE
       )
   })
 
