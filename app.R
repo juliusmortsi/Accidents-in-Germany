@@ -104,9 +104,9 @@ ui <- fluidPage(
         transition: transform 0.3s ease-out;
       }
 
-      .car-left { left: -40px; animation: drive-right 10s infinite linear; }
-      .car-person { right: -40px; animation: drive-left-person 10s infinite linear; }
-      .ambulance { left: -60px; opacity: 0; animation: drive-ambulance 10s infinite linear; }
+      .car-left { left: -60px; animation: drive-right-human 10s infinite linear; }
+      .car-taxi { right: -60px; animation: drive-left-taxi 10s infinite linear; }
+      .ambulance { right: -60px; opacity: 0; animation: drive-ambulance-left 10s infinite linear; }
 
       .explosion {
         position: absolute;
@@ -119,26 +119,26 @@ ui <- fluidPage(
       }
 
       /* Base Movement */
-      @keyframes drive-right {
-        0% { left: -40px; opacity: 1; }
+      @keyframes drive-right-human {
+        0% { left: -60px; opacity: 1; }
         15% { left: 45%; opacity: 1; }
         18% { left: 45%; opacity: 0; }
         100% { left: 45%; opacity: 0; }
       }
 
-      @keyframes drive-left-person {
-        0% { right: -40px; opacity: 1; }
+      @keyframes drive-left-taxi {
+        0% { right: -60px; opacity: 1; }
         15% { right: 45%; opacity: 1; }
         18% { right: 45%; opacity: 0; }
         100% { right: 45%; opacity: 0; }
       }
 
-      @keyframes drive-ambulance {
-        0%, 55% { left: -60px; opacity: 0; }
-        60% { left: -60px; opacity: 1; }
-        75% { left: 40%; opacity: 1; }
-        85% { left: 40%; opacity: 1; }
-        100% { left: 110%; opacity: 1; }
+      @keyframes drive-ambulance-left {
+        0%, 55% { right: -60px; opacity: 0; }
+        60% { right: -60px; opacity: 1; }
+        75% { right: 40%; opacity: 1; }
+        85% { right: 40%; opacity: 1; }
+        100% { right: 110%; opacity: 1; }
       }
 
       @keyframes explode {
@@ -155,8 +155,8 @@ ui <- fluidPage(
 
       @keyframes tumble {
         0% { transform: rotate(0deg) translate(0, 0); }
-        30% { transform: rotate(120deg) translate(40px, -40px); opacity: 1; }
-        100% { transform: rotate(720deg) translate(80px, 20px); opacity: 0; }
+        30% { transform: rotate(120deg) translate(60px, -40px); opacity: 1; }
+        100% { transform: rotate(720deg) translate(120px, 20px); opacity: 0; }
       }
     ")),
 
@@ -176,12 +176,12 @@ ui <- fluidPage(
       });
 
       function performCrashSequence() {
-        var carP = document.querySelector('.car-person');
+        var carH = document.querySelector('.car-left');
         var crashAudio = document.getElementById('crash-sound');
         var sirenAudio = document.getElementById('siren-sound');
 
         // 1. Reset classes
-        if(carP) carP.classList.remove('flip-tumble');
+        if(carH) carH.classList.remove('flip-tumble');
         if(sirenAudio) { sirenAudio.pause(); sirenAudio.currentTime = 0; }
 
         // 2. Collision Event (at 1.5s in 10s loop)
@@ -190,7 +190,7 @@ ui <- fluidPage(
             crashAudio.currentTime = 0;
             crashAudio.play().catch(e => {});
           }
-          if (Math.random() > 0.6 && carP) carP.classList.add('flip-tumble');
+          if (Math.random() > 0.6 && carH) carH.classList.add('flip-tumble');
         }, 1500);
 
         // 3. Ambulance Siren (at 6.0s in 10s loop)
@@ -198,6 +198,8 @@ ui <- fluidPage(
           if (window.audioReady && sirenAudio) {
             sirenAudio.currentTime = 0;
             sirenAudio.play().catch(e => {});
+            // Stop after two rings (approx 2.5s)
+            setTimeout(() => { sirenAudio.pause(); sirenAudio.currentTime = 0; }, 2500);
           }
         }, 6000);
       }
@@ -215,8 +217,8 @@ ui <- fluidPage(
       "Accidents in Germany - Histogram & Map Visualizations",
       div(
         class = "crash-container",
-        div(class = "car-left car-sprite", "🚕"),
-        div(class = "car-person car-sprite", "🏃🏼➡️"),
+        div(class = "car-left car-sprite", "🏃🏼➡️"),
+        div(class = "car-taxi car-sprite", "🚕"),
         div(class = "ambulance car-sprite", "🚑"),
         div(class = "explosion", "💥")
       )
@@ -288,15 +290,6 @@ ui <- fluidPage(
           value = c(2011, 2023),
           step = 1,
           sep = ""
-        ),
-
-        # Number of bins for histogram
-        sliderInput(
-          "state_bins",
-          "Number of Bins:",
-          min = 10,
-          max = 100,
-          value = 30
         )
       ),
 
@@ -307,12 +300,18 @@ ui <- fluidPage(
         condition = "input.dataset == 'casualties'",
         h4("Casualties Filters"),
 
-        # Variable to plot in histogram
+        # Variable for visualization
         selectInput(
-          "casualties_var",
-          "Histogram Variable:",
-          choices = c("Cases" = "cases", "Year" = "year"),
-          selected = "cases"
+          "casualties_plot_var",
+          "Analysis Variable:",
+          choices = c(
+            "Mode of Transport" = "mode",
+            "Area" = "area",
+            "Outcome" = "outcome",
+            "Sex" = "sex",
+            "Age Group" = "age_group"
+          ),
+          selected = "mode"
         ),
 
         # Filter by mode of transport
@@ -407,39 +406,21 @@ ui <- fluidPage(
         ),
 
         # ========================================
-        # HISTOGRAM TAB
+        # MONTHLY TRENDS (HEATMAP)
         # ========================================
         tabPanel(
-          "📊 Histogram",
+          "🌡️ Monthly Trends",
           br(),
-          plotlyOutput("histogram_plot", height = "600px")
+          plotlyOutput("heatmap_plot", height = "600px")
         ),
 
         # ========================================
-        # MULTI-HISTOGRAM TAB (Faceted)
+        # DISTRIBUTION (PIE CHART)
         # ========================================
         tabPanel(
-          "📈 Multi-Histogram",
+          "🥧 Distribution",
           br(),
-          plotlyOutput("multi_histogram", height = "600px")
-        ),
-
-        # ========================================
-        # DATA TABLE TAB
-        # ========================================
-        tabPanel(
-          "📋 Data Table",
-          br(),
-          DTOutput("data_table")
-        ),
-
-        # ========================================
-        # SUMMARY STATISTICS TAB
-        # ========================================
-        tabPanel(
-          "ℹ️ Summary Statistics",
-          br(),
-          verbatimTextOutput("summary_stats")
+          plotlyOutput("pie_chart_plot", height = "600px")
         )
       )
     )
@@ -898,127 +879,97 @@ server <- function(input, output, session) {
   })
 
   # ========================================
-  # MULTI-HISTOGRAM (FACETED)
+  # MONTHLY TRENDS HEATMAP
   # ========================================
-  # Create faceted histograms by category
-  output$multi_histogram <- renderPlotly({
+  output$heatmap_plot <- renderPlotly({
     req(filtered_data())
     df <- filtered_data()
 
+    # 1. Aggregate cases by month/year and state/mode
     if (input$dataset == "state") {
-      # Facet by injury type for state data
-      p <- ggplot(df, aes(x = cases)) +
-        geom_histogram(bins = input$state_bins, fill = "steelblue", color = "white") +
-        facet_wrap(~type_of_injury, scales = "free") +
-        theme_minimal() +
-        labs(
-          title = "Distribution of Cases by Injury Type",
-          x = "Cases",
-          y = "Frequency"
-        )
+      heatmap_data <- df %>%
+        group_by(state, month) %>%
+        summarise(Total = sum(cases, na.rm = TRUE), .groups = "drop")
+
+      # Ensure months are in order (lowercase to match state_long.csv)
+      month_levels <- c(
+        "january", "february", "march", "april", "may", "june",
+        "july", "august", "september", "october", "november", "december"
+      )
+      heatmap_data$month <- factor(heatmap_data$month, levels = month_levels)
+
+      p_data <- heatmap_data %>%
+        spread(month, Total, fill = 0) %>%
+        as.data.frame()
+
+      x_axis_labels <- month_levels
+      y_var <- "state"
+      plot_title <- "Monthly Accident Intensity by State"
     } else {
-      # Facet by outcome for casualties data
-      p <- ggplot(df, aes(x = cases)) +
-        geom_histogram(bins = input$casualties_bins, fill = "coral", color = "white") +
-        facet_wrap(~outcome, scales = "free") +
-        theme_minimal() +
-        labs(
-          title = "Distribution of Cases by Outcome",
-          x = "Cases",
-          y = "Frequency"
-        )
+      # Casualties lacks month column, use Year vs Mode
+      heatmap_data <- df %>%
+        group_by(mode, year) %>%
+        summarise(Total = sum(cases, na.rm = TRUE), .groups = "drop")
+
+      p_data <- heatmap_data %>%
+        spread(year, Total, fill = 0) %>%
+        as.data.frame()
+
+      x_axis_labels <- sort(unique(heatmap_data$year))
+      y_var <- "mode"
+      plot_title <- "Yearly Casualties by Transport Mode"
     }
 
-    # Convert to interactive plotly
-    return(ggplotly(p))
+    # 2. Reshape for heatmap
+    row_names <- p_data[[y_var]]
+    z_matrix <- as.matrix(p_data[, -1, drop = FALSE])
+
+    # 3. Create Heatmap
+    plot_ly(
+      x = x_axis_labels,
+      y = row_names,
+      z = z_matrix,
+      type = "heatmap",
+      colorscale = "YlOrRd"
+    ) %>%
+      layout(
+        title = plot_title,
+        xaxis = list(title = ""),
+        yaxis = list(title = "")
+      )
   })
 
   # ========================================
-  # DATA TABLE
+  # DISTRIBUTION PIE CHART
   # ========================================
-  # Display filtered data in interactive table
-  output$data_table <- renderDT({
-    datatable(
-      filtered_data(),
-      options = list(
-        pageLength = 25,
-        scrollX = TRUE,
-        autoWidth = TRUE
-      ),
-      filter = "top"
-    )
-  })
-
-  # ========================================
-  # SUMMARY STATISTICS
-  # ========================================
-  # Display descriptive statistics
-  output$summary_stats <- renderPrint({
+  output$pie_chart_plot <- renderPlotly({
+    req(filtered_data())
     df <- filtered_data()
 
-    # Print header
-    cat(strrep("=", 60), "\n")
-    cat("SUMMARY STATISTICS\n")
-    cat(strrep("=", 60), "\n\n")
+    # Identify variable to group by
+    group_var <- if (input$dataset == "state") input$state_plot_var else input$casualties_plot_var
 
-    # Basic information
-    cat("Dataset:", input$dataset, "\n")
-    cat("Number of rows:", nrow(df), "\n")
-    cat("Number of columns:", ncol(df), "\n\n")
+    # 1. Aggregate
+    pie_data <- df %>%
+      group_by(!!sym(group_var)) %>%
+      summarise(Total = sum(cases, na.rm = TRUE), .groups = "drop") %>%
+      arrange(desc(Total))
 
-    # Cases distribution
-    cat("Cases Distribution:\n")
-    cat(strrep("-", 40), "\n")
-    print(summary(df$cases))
-    cat("\n")
-
-    # Additional statistics
-    cat("Standard Deviation:", sd(df$cases, na.rm = TRUE), "\n")
-    cat("Variance:", var(df$cases, na.rm = TRUE), "\n")
-    cat("Total Cases:", sum(df$cases, na.rm = TRUE), "\n\n")
-
-    # Dataset-specific breakdowns
-    if (input$dataset == "state") {
-      # Breakdown by injury type
-      cat("Breakdown by Type of Injury:\n")
-      cat(strrep("-", 40), "\n")
-      print(df %>%
-        group_by(type_of_injury) %>%
-        summarise(
-          Total = sum(cases, na.rm = TRUE),
-          Mean = mean(cases, na.rm = TRUE),
-          Median = median(cases, na.rm = TRUE),
-          .groups = "drop"
-        ) %>%
-        arrange(desc(Total)))
-
-      # Breakdown by state
-      cat("\n\nBreakdown by State:\n")
-      cat(strrep("-", 40), "\n")
-      print(df %>%
-        group_by(state) %>%
-        summarise(
-          Total = sum(cases, na.rm = TRUE),
-          Mean = mean(cases, na.rm = TRUE),
-          Median = median(cases, na.rm = TRUE),
-          .groups = "drop"
-        ) %>%
-        arrange(desc(Total)))
-    } else {
-      # Breakdown by outcome
-      cat("Breakdown by Outcome:\n")
-      cat(strrep("-", 40), "\n")
-      print(df %>%
-        group_by(outcome) %>%
-        summarise(
-          Total = sum(cases, na.rm = TRUE),
-          Mean = mean(cases, na.rm = TRUE),
-          Median = median(cases, na.rm = TRUE),
-          .groups = "drop"
-        ) %>%
-        arrange(desc(Total)))
-    }
+    # 2. Create Pie Chart
+    plot_ly(
+      pie_data,
+      labels = ~ get(group_var), values = ~Total, type = "pie",
+      textinfo = "label+percent",
+      insidetextorientation = "radial",
+      marker = list(colors = RColorBrewer::brewer.pal(8, "Set3"))
+    ) %>%
+      layout(
+        title = paste("Proportion of Cases by", gsub("_", " ", group_var)),
+        showlegend = TRUE
+      )
   })
+
+  # Legacy outputs removed
 
   # ========================================
   # DOWNLOAD HANDLER
