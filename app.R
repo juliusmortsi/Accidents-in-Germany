@@ -80,39 +80,41 @@ ui <- fluidPage(
       .state-info-panel .close-btn { position: absolute; top: 5px; right: 10px; cursor: pointer; font-size: 20px; color: #999; font-weight: bold; }
       .state-info-panel .close-btn:hover { color: #333; }
 
-      /* === Themes === */
-      /* Sidebar: Red-Orange */
-      .well { background: linear-gradient(135deg, #FF4500 0%, #FF8C00 100%) !important; border: none !important; color: white !important; box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important; }
+      /* === Themes (Custom Palette) === */
+      /* Colors: Teal(#007E7E, #309898), Orange/Yel(#F4631E, #FF9F00), Red(#CB041F, #AD0000) */
+
+      /* Sidebar: Orange */
+      .well { background: linear-gradient(135deg, #F4631E 0%, #FF9F00 100%) !important; border: none !important; color: white !important; box-shadow: 0 4px 15px rgba(244, 99, 30, 0.3) !important; }
       .well h4, .well .control-label { color: white !important; font-weight: bold; }
       .well hr { border-top: 1px solid rgba(255,255,255,0.3); }
       .well .btn-default { background: rgba(255,255,255,0.2) !important; color: white !important; border: 1px solid rgba(255,255,255,0.5) !important; }
 
-      /* Tabs: Teal Grove */
-      .nav-tabs { background: linear-gradient(to right, #134e4a 0%, #0f766e 100%) !important; border-bottom: 2px solid #2dd4bf !important; border-radius: 8px 8px 0 0; padding: 5px 5px 0 5px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-      .nav-tabs > li > a { color: rgba(255,255,255,0.8) !important; border: none !important; font-weight: bold; transition: all 0.3s ease; margin-right: 5px; border-radius: 6px 6px 0 0 !important; }
-      .nav-tabs > li > a:hover { background: rgba(255,255,255,0.1) !important; color: white !important; }
+      /* Tabs: Teals */
+      .nav-tabs { background: linear-gradient(to right, #007E7E 0%, #309898 100%) !important; border-bottom: 2px solid #309898 !important; border-radius: 8px 8px 0 0; padding: 5px 5px 0 5px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+      .nav-tabs > li > a { color: rgba(255,255,255,0.9) !important; border: none !important; font-weight: bold; transition: all 0.3s ease; margin-right: 5px; border-radius: 6px 6px 0 0 !important; }
+      .nav-tabs > li > a:hover { background: rgba(255,255,255,0.2) !important; color: white !important; }
       .nav-tabs > li.active > a, .nav-tabs > li.active > a:focus, .nav-tabs > li.active > a:hover {
-        background: #2dd4bf !important; color: #134e4a !important; border: none !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        background: #309898 !important; color: #fff !important; border: none !important; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
       }
 
       /* Title: Centered Bold */
       .app-title { text-align: center; width: 100%; margin: 10px 0 15px 0; }
-      .app-title h2 { font-family: 'Arial Black', sans-serif; font-weight: 900 !important; color: #000 !important; font-size: 28px; letter-spacing: -1px; text-transform: uppercase; margin: 0; }
+      .app-title h2 { font-family: 'Arial Black', sans-serif; font-weight: 900 !important; color: #AD0000 !important; font-size: 28px; letter-spacing: -1px; text-transform: uppercase; margin: 0; }
 
-      /* KPI Cards: Bright Yellow */
+      /* KPI Cards: Reds (Swapped) */
       .kpi-row { margin-bottom: 20px; padding: 0 10px; }
       .kpi-card {
-        background: linear-gradient(135deg, #FFEA00 0%, #FFD600 100%); /* Bright Yellow */
+        background: linear-gradient(135deg, #CB041F 0%, #AD0000 100%); /* Bright to Dark Red */
         border-radius: 12px; padding: 15px; text-align: center;
-        box-shadow: 0 4px 15px rgba(255, 214, 0, 0.4); border: 1px solid rgba(255,255,255,0.4);
+        box-shadow: 0 4px 15px rgba(173, 0, 0, 0.3); border: 1px solid rgba(255,255,255,0.2);
         transition: transform 0.3s ease; height: 110px; display: flex; flex-direction: column; justify-content: center;
-        color: #000;
+        color: #fff;
       }
-      .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
-      .kpi-title { color: #444; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; }
-      .kpi-value { color: #000; font-size: 24px; font-weight: 900; margin-bottom: 2px; }
+      .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
+      .kpi-title { color: rgba(255,255,255,0.9); font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; }
+      .kpi-value { color: #fff; font-size: 24px; font-weight: 900; margin-bottom: 2px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
       .kpi-trend { font-size: 11px; font-weight: 700; }
-      .trend-up { color: #D32F2F; } .trend-down { color: #388E3C; } .trend-neutral { color: #555; }
+      .trend-up { color: #FF9F00; } .trend-down { color: #007E7E; } .trend-neutral { color: #fff; }
 
       /* === Animations (Splash) === */
       #splash-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #f8f9fa; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity 1s ease-out, visibility 1s; }
