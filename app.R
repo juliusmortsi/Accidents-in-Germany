@@ -470,25 +470,121 @@ server <- function(input, output, session) {
         group = "stateLabels"
       )
     
-    # Add JavaScript for click interaction
+    # Add custom CSS for data panel
+    map <- map %>%
+      htmlwidgets::prependContent(htmltools::tags$style(HTML("
+        .state-info-panel {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          background: white;
+          padding: 15px 20px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          z-index: 1000;
+          min-width: 250px;
+          font-family: Arial, sans-serif;
+          display: none;
+        }
+        .state-info-panel h3 {
+          margin: 0 0 10px 0;
+          color: #333;
+          font-size: 18px;
+          border-bottom: 2px solid #007bff;
+          padding-bottom: 5px;
+        }
+        .state-info-panel .info-row {
+          margin: 8px 0;
+          display: flex;
+          justify-content: space-between;
+        }
+        .state-info-panel .info-label {
+          font-weight: bold;
+          color: #555;
+        }
+        .state-info-panel .info-value {
+          color: #007bff;
+          font-weight: bold;
+        }
+        .state-info-panel .close-btn {
+          position: absolute;
+          top: 5px;
+          right: 10px;
+          cursor: pointer;
+          font-size: 20px;
+          color: #999;
+          font-weight: bold;
+        }
+        .state-info-panel .close-btn:hover {
+          color: #333;
+        }
+      ")))
+    
+    # Add JavaScript for enhanced click interaction with data panel
     map <- map %>%
       htmlwidgets::onRender("
         function(el, x) {
           var map = this;
           var clickedLayerId = null;
           var originalStyles = {};
+          var stateData = {};
           
-          // Store original styles for all layers
+          // Create data panel element
+          var infoPanel = document.createElement('div');
+          infoPanel.className = 'state-info-panel';
+          infoPanel.id = 'state-info-panel';
+          el.appendChild(infoPanel);
+          
+          // Store original styles and data for all layers
           map.eachLayer(function(layer) {
             if (layer.feature && layer.options.layerId) {
-              originalStyles[layer.options.layerId] = {
+              var layerId = layer.options.layerId;
+              originalStyles[layerId] = {
                 fillOpacity: layer.options.fillOpacity,
                 weight: layer.options.weight,
                 opacity: layer.options.opacity,
                 fillColor: layer.options.fillColor
               };
+              
+              // Extract data from layer (passed through labels)
+              if (layer._tooltip && layer._tooltip._content) {
+                var content = layer._tooltip._content;
+                var totalMatch = content.match(/Total Cases: ([\\d,]+)/);
+                var avgMatch = content.match(/Average: ([\\d.]+)/);
+                stateData[layerId] = {
+                  total: totalMatch ? totalMatch[1] : 'N/A',
+                  average: avgMatch ? avgMatch[1] : 'N/A'
+                };
+              }
             }
           });
+          
+          // Function to show data panel
+          function showDataPanel(stateName, data) {
+            var panel = document.getElementById('state-info-panel');
+            panel.innerHTML = `
+              <span class='close-btn' onclick='document.getElementById(\"state-info-panel\").style.display=\"none\"'>×</span>
+              <h3>${stateName}</h3>
+              <div class='info-row'>
+                <span class='info-label'>Total Cases:</span>
+                <span class='info-value'>${data.total}</span>
+              </div>
+              <div class='info-row'>
+                <span class='info-label'>Average Cases:</span>
+                <span class='info-value'>${data.average}</span>
+              </div>
+              <div style='margin-top: 15px; font-size: 12px; color: #666; text-align: center;'>
+                Click state again or map to reset
+              </div>
+            `;
+            panel.style.display = 'block';
+          }
+          
+          // Function to hide data panel
+          function hideDataPanel() {
+            var panel = document.getElementById('state-info-panel');
+            panel.style.display = 'none';
+          }
           
           // Function to reset all states to original view
           function resetAllStates() {
@@ -510,31 +606,35 @@ server <- function(input, output, session) {
                 layer.setOpacity(1);
               }
             });
+            hideDataPanel();
           }
           
-          // Function to isolate a single state
+          // Function to isolate a single state with blur effect
           function isolateState(targetLayerId) {
             map.eachLayer(function(layer) {
               if (layer.feature && layer.options.layerId) {
                 if (layer.options.layerId === targetLayerId) {
-                  // Highlight the clicked state
+                  // Make clicked state bigger, bolder, and prominent
                   layer.setStyle({
-                    fillOpacity: 0.95,
-                    weight: 4,
-                    opacity: 1
+                    fillOpacity: 1,
+                    weight: 5,
+                    opacity: 1,
+                    color: '#000000'
                   });
+                  layer.bringToFront();
                 } else {
-                  // Hide all other states completely
+                  // Blur effect: make other states very faint/transparent
                   layer.setStyle({
-                    fillOpacity: 0,
-                    weight: 0,
-                    opacity: 0
+                    fillOpacity: 0.05,
+                    weight: 0.5,
+                    opacity: 0.2,
+                    color: '#cccccc'
                   });
                 }
               }
             });
             
-            // Hide labels of other states
+            // Show only the label of clicked state
             map.eachLayer(function(layer) {
               if (layer.options && layer.options.pane === 'markerPane' && layer._icon) {
                 var labelText = layer._icon.textContent || layer._icon.innerText;
@@ -545,6 +645,11 @@ server <- function(input, output, session) {
                 }
               }
             });
+            
+            // Show data panel
+            if (stateData[targetLayerId]) {
+              showDataPanel(targetLayerId, stateData[targetLayerId]);
+            }
           }
           
           // Add click event to polygons
@@ -562,12 +667,12 @@ server <- function(input, output, session) {
                 isolateState(layerId);
                 clickedLayerId = layerId;
                 
-                // Zoom to the clicked state
+                // Zoom closer to the clicked state
                 map.fitBounds(e.layer.getBounds(), {
-                  padding: [50, 50],
-                  maxZoom: 8,
+                  padding: [80, 80],
+                  maxZoom: 9,
                   animate: true,
-                  duration: 0.5
+                  duration: 0.6
                 });
               }
             } else {
