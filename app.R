@@ -589,7 +589,7 @@ server <- function(input, output, session) {
       )
 
     # Add state labels
-    centroids <- st_centroid(germany_data)
+    centroids <- suppressWarnings(st_centroid(germany_data))
     coords <- st_coordinates(centroids)
 
     map <- map %>%
