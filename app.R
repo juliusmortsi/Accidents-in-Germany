@@ -211,7 +211,7 @@ ui <- fluidPage(
       # Dataset selection dropdown
       selectInput(
         "dataset",
-        "📊 Select Dataset:",
+        "Select Dataset:",
         choices = c("State Accidents" = "state", "Casualties" = "casualties"),
         selected = "state"
       ),
