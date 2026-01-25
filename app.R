@@ -120,10 +120,10 @@ ui <- fluidPage(
       #splash-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #f8f9fa; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity 1s ease-out, visibility 1s; }
       .splash-container { position: relative; width: 800px; height: 200px; overflow: hidden; }
       .car-sprite { position: absolute; font-size: 80px; transition: transform 0.3s ease-out; }
-      .car-left { left: -100px; animation: drive-right-human 3s 1 linear forwards; }
-      .car-taxi { right: -100px; animation: drive-left-taxi 3s 1 linear forwards; }
+      .car-left { left: -100px; animation: drive-right-human 5s 1 linear forwards; }
+      .car-taxi { right: -100px; animation: drive-left-taxi 5s 1 linear forwards; }
       .ambulance { right: -100px; opacity: 0; animation: drive-ambulance-left 3s 1 linear forwards; }
-      .explosion { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0); font-size: 100px; animation: explode 3s 1 linear forwards; opacity: 0; }
+      .explosion { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0); font-size: 100px; animation: explode 5s 1 linear forwards; opacity: 0; }
       @keyframes drive-right-human { 0% { left: -100px; opacity: 1; } 15% { left: 45%; opacity: 1; } 18% { left: 45%; opacity: 0; } 100% { left: 45%; opacity: 0; } }
       @keyframes drive-left-taxi { 0% { right: -100px; opacity: 1; } 15% { right: 45%; opacity: 1; } 18% { right: 45%; opacity: 0; } 100% { right: 45%; opacity: 0; } }
       @keyframes drive-ambulance-left { 0%, 20% { right: -100px; opacity: 0; } 25% { right: -100px; opacity: 1; } 85% { right: 110%; opacity: 1; } 100% { right: 110%; opacity: 0; } }
@@ -157,7 +157,7 @@ ui <- fluidPage(
             crashAudio.play().catch(e => {});
           }
           if (Math.random() > 0.6 && carH) carH.classList.add('flip-tumble');
-        }, 450);
+        }, 750);
       }
 
       // Hide splash after 2.8s (just before 3s loop finishes)
@@ -167,7 +167,7 @@ ui <- fluidPage(
           splash.style.opacity = '0';
           setTimeout(() => { splash.style.visibility = 'hidden'; }, 1000);
         }
-      }, 2800);
+      }, 4800);
 
       performCrashSequence();
     "))
