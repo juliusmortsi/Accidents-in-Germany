@@ -116,6 +116,13 @@ ui <- fluidPage(
       .kpi-trend { font-size: 11px; font-weight: 700; }
       .trend-up { color: #FF9F00; } .trend-down { color: #007E7E; } .trend-neutral { color: #fff; }
 
+      /* Year Range Slider: Red */
+      .irs-bar { background: #CB041F !important; }
+      .irs-from, .irs-to, .irs-single { background: #CB041F !important; }
+      .irs-slider { background: #AD0000 !important; border: 2px solid #CB041F !important; }
+      .irs-from:before, .irs-to:before, .irs-single:before { border-top-color: #CB041F !important; }
+
+
       /* === Animations (Splash) === */
       #splash-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #f8f9fa; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity 1s ease-out, visibility 1s; }
       .splash-container { position: relative; width: 800px; height: 200px; overflow: hidden; }
@@ -167,7 +174,7 @@ ui <- fluidPage(
           splash.style.opacity = '0';
           setTimeout(() => { splash.style.visibility = 'hidden'; }, 1000);
         }
-      }, 4800);
+      }, 3000);
 
       performCrashSequence();
     "))
@@ -339,7 +346,7 @@ ui <- fluidPage(
           "Germany Map",
           value = "map_tab", # Add value for easier reference in hideTab/showTab
           br(),
-          leafletOutput("germany_map", height = "60vh")
+          leafletOutput("germany_map", height = "75vh")
         ),
 
         # ========================================
@@ -348,7 +355,7 @@ ui <- fluidPage(
         tabPanel(
           "Monthly Trends",
           br(),
-          plotlyOutput("heatmap_plot", height = "60vh")
+          plotlyOutput("heatmap_plot", height = "75vh")
         ),
 
         # ========================================
@@ -357,7 +364,7 @@ ui <- fluidPage(
         tabPanel(
           "Distribution",
           br(),
-          plotlyOutput("pie_chart_plot", height = "60vh")
+          plotlyOutput("pie_chart_plot", height = "75vh")
         )
       )
     )
